@@ -1,14 +1,16 @@
 // ========== Data & Storage ==========
-const STORAGE_KEY = 'spookyYardVotes_v3';
+const STORAGE_KEY = 'spookyYardVotes_v5';
+const ROOM_KEY = 'halloweenVoteRoomId';
+const JSONBLOB = 'https://jsonblob.com/api/jsonBlob';
 
 // Reliable Halloween-themed images (Unsplash + Wikimedia)
 const SAFE_IMAGES = [
-  'https://images.unsplash.com/photo-1635376325430-95af2fc43954?auto=format&fit=crop&w=800&h=500&q=80', // skeleton yard + spider webs
-  'https://images.unsplash.com/photo-1509557965875-b88c97052f0e?auto=format&fit=crop&w=800&h=500&q=80', // glowing jack-o-lanterns
-  'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=800&h=500&q=80', // lit haunted house
-  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Halloween_Yards_Decorations.jpg/800px-Halloween_Yards_Decorations.jpg', // classic yard decor
-  'https://images.unsplash.com/photo-1509248961158-e54f69324553?auto=format&fit=crop&w=800&h=500&q=80', // outdoor halloween lights
-  'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=800&h=500&q=80'  // skeleton
+  'https://images.unsplash.com/photo-1635376325430-95af2fc43954?auto=format&fit=crop&w=800&h=500&q=80',
+  'https://images.unsplash.com/photo-1509557965875-b88c97052f0e?auto=format&fit=crop&w=800&h=500&q=80',
+  'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?auto=format&fit=crop&w=800&h=500&q=80',
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Halloween_Yards_Decorations.jpg/800px-Halloween_Yards_Decorations.jpg',
+  'https://images.unsplash.com/photo-1509248961158-e54f69324553?auto=format&fit=crop&w=800&h=500&q=80',
+  'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=800&h=500&q=80'
 ];
 
 const DEFAULT_YARDS = [
@@ -81,16 +83,166 @@ function loadData() {
   } catch (e) {
     console.warn('Failed to load data', e);
   }
-  const data = { yards: DEFAULT_YARDS, votedIds: new Set() };
-  saveData(data);
+  const data = { yards: DEFAULT_YARDS.map(y => ({ ...y })), votedIds: new Set() };
+  saveDataLocal(data);
   return data;
 }
 
-function saveData(data) {
+function saveDataLocal(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     yards: data.yards,
     votedIds: [...data.votedIds]
   }));
+}
+
+function getRoomId() {
+  return (localStorage.getItem(ROOM_KEY) || '').trim();
+}
+
+function setRoomId(id) {
+  if (id) localStorage.setItem(ROOM_KEY, id);
+  else localStorage.removeItem(ROOM_KEY);
+}
+
+function updateSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const id = getRoomId();
+  if (id) {
+    el.innerHTML = 'Status: <strong style="color:var(--green)">Shared room</strong> — code: <code id="room-code-display">' + id + '</code>';
+  } else {
+    el.innerHTML = 'Status: <strong>Local only</strong> (this browser)';
+  }
+}
+
+async function pullFromCloud() {
+  const id = getRoomId();
+  if (!id) return false;
+  try {
+    const res = await fetch(JSONBLOB + '/' + id, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data && Array.isArray(data.yards)) {
+      // Keep this device's votedIds; sync yard list + vote counts from cloud
+      const localVoted = state.votedIds;
+      state.yards = data.yards;
+      state.votedIds = localVoted;
+      saveDataLocal(state);
+      return true;
+    }
+  } catch (e) {
+    console.warn('Pull failed', e);
+    toast('Could not load shared data — check room code / internet');
+  }
+  return false;
+}
+
+async function pushToCloud() {
+  const id = getRoomId();
+  if (!id) return false;
+  try {
+    // Don't upload huge data-URL photos to free store — strip to placeholder if too big
+    const yards = state.yards.map(y => {
+      const copy = { ...y };
+      if (copy.image && copy.image.startsWith('data:') && copy.image.length > 80000) {
+        copy.image = getRandomImage();
+      }
+      return copy;
+    });
+    const payload = { yards, updatedAt: Date.now() };
+    const res = await fetch(JSONBLOB + '/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return true;
+  } catch (e) {
+    console.warn('Push failed', e);
+    toast('Could not save to shared room');
+  }
+  return false;
+}
+
+async function saveData(data) {
+  saveDataLocal(data);
+  if (getRoomId()) {
+    await pushToCloud();
+  }
+}
+
+async function createSharedRoom() {
+  try {
+    toast('Creating shared room…');
+    const payload = { yards: state.yards, updatedAt: Date.now() };
+    const res = await fetch(JSONBLOB, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    // ID from Location header or response URL
+    let id = '';
+    const loc = res.headers.get('Location') || res.headers.get('location') || '';
+    if (loc) {
+      id = loc.split('/').pop();
+    }
+    if (!id) {
+      try {
+        const body = await res.json();
+        id = body.id || body._id || '';
+      } catch (_) {}
+    }
+    if (!id) throw new Error('No room id returned');
+    setRoomId(id);
+    updateSyncStatus();
+    const input = document.getElementById('room-code');
+    if (input) input.value = id;
+    try {
+      await navigator.clipboard.writeText(id);
+      toast('Room created! Code copied: ' + id);
+    } catch (_) {
+      toast('Room created! Code: ' + id);
+    }
+  } catch (e) {
+    console.warn(e);
+    toast('Could not create room — try again with internet on');
+  }
+}
+
+async function joinSharedRoom() {
+  const input = document.getElementById('room-code');
+  const id = (input && input.value || '').trim();
+  if (!id) {
+    toast('Paste a room code first');
+    return;
+  }
+  setRoomId(id);
+  toast('Joining room…');
+  const ok = await pullFromCloud();
+  updateSyncStatus();
+  if (ok) {
+    refresh();
+    toast('Joined! Showing shared yards');
+  }
+}
+
+async function syncNow() {
+  if (!getRoomId()) {
+    toast('Not in a shared room yet');
+    return;
+  }
+  toast('Syncing…');
+  await pullFromCloud();
+  await pushToCloud();
+  refresh();
+  toast('Synced');
+}
+
+function leaveRoom() {
+  setRoomId('');
+  updateSyncStatus();
+  toast('Left shared room — back to local only');
 }
 
 let state = loadData();
@@ -410,17 +562,27 @@ function refresh() {
 }
 
 // ========== Actions ==========
-function vote(id) {
+async function vote(id) {
   if (state.votedIds.has(id)) return;
 
   const yard = state.yards.find(y => y.id === id);
   if (!yard) return;
 
-  yard.votes += 1;
+  // Pull latest counts first if shared
+  if (getRoomId()) await pullFromCloud();
+  const y2 = state.yards.find(y => y.id === id);
+  if (!y2) return;
+  if (state.votedIds.has(id)) {
+    refresh();
+    toast('You already voted for ' + y2.name);
+    return;
+  }
+
+  y2.votes += 1;
   state.votedIds.add(id);
-  saveData(state);
+  await saveData(state);
   refresh();
-  toast(`You voted for ${yard.name}! 🎃`);
+  toast(`You voted for ${y2.name}! 🎃`);
 }
 
 // Holds the chosen photo as a data URL (set by file input)
@@ -514,14 +676,14 @@ async function addYard(e) {
 
   state.yards.unshift(newYard);
   try {
-    saveData(state);
+    await saveData(state);
   } catch (err) {
     // localStorage full — try without the big image
     console.warn('Storage full, retrying without photo', err);
     newYard.image = getRandomImage();
     state.yards[0] = newYard;
     try {
-      saveData(state);
+      await saveData(state);
       toast('Photo too large for storage — used a placeholder instead');
     } catch (e2) {
       state.yards.shift();
@@ -537,10 +699,11 @@ async function addYard(e) {
   toast(`${name} has been added! Go vote for it 👻`);
 }
 
-function resetAll() {
+async function resetAll() {
   if (!confirm('This will erase all yards and votes and restore the sample data. Continue?')) return;
   localStorage.removeItem(STORAGE_KEY);
   state = loadData();
+  if (getRoomId()) await pushToCloud();
   refresh();
   toast('Data reset to defaults');
 }
@@ -647,7 +810,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Shared room buttons
+  const btnCreate = document.getElementById('btn-create-room');
+  const btnJoin = document.getElementById('btn-join-room');
+  const btnSync = document.getElementById('btn-sync-now');
+  const btnLeave = document.getElementById('btn-leave-room');
+  if (btnCreate) btnCreate.addEventListener('click', createSharedRoom);
+  if (btnJoin) btnJoin.addEventListener('click', joinSharedRoom);
+  if (btnSync) btnSync.addEventListener('click', syncNow);
+  if (btnLeave) btnLeave.addEventListener('click', leaveRoom);
+
   createParticles();
+  updateSyncStatus();
   refresh();
-  handleVoteDeepLink();
+
+  // If already in a room, pull latest then handle deep link
+  (async () => {
+    if (getRoomId()) {
+      await pullFromCloud();
+      refresh();
+      updateSyncStatus();
+    }
+    handleVoteDeepLink();
+  })();
+
+  // Auto-sync every 20s when in a room
+  setInterval(async () => {
+    if (!getRoomId()) return;
+    const changed = await pullFromCloud();
+    if (changed) refresh();
+  }, 20000);
 });

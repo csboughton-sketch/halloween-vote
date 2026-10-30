@@ -862,3 +862,19 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
 }
+
+.sync-status {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.sync-status code {
+  color: var(--orange-bright);
+  font-size: 0.85rem;
+  word-break: break-all;
+}

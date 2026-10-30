@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🎃 Halloween Vote</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=5" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -45,6 +45,7 @@
       <button class="tab" data-tab="leaderboard">Leaderboard</button>
       <button class="tab" data-tab="add">Add a Yard</button>
       <button class="tab" data-tab="qr">QR Code</button>
+      <button class="tab" data-tab="sync">Shared</button>
     </nav>
 
     <!-- Gallery Tab -->
@@ -146,6 +147,46 @@
         </div>
       </div>
     </section>
+
+    <!-- Shared Sync Tab -->
+    <section id="sync" class="tab-content">
+      <div class="qr-panel">
+        <h2>🔗 Shared Voting</h2>
+        <p class="qr-intro">So <strong>everyone</strong> sees the same yards and vote counts, turn on shared mode. One person creates a room; others join with the code.</p>
+
+        <div id="sync-status" class="sync-status">Status: <strong>Local only</strong> (this browser)</div>
+
+        <div class="form-group" style="text-align:left">
+          <label>Create a new shared room</label>
+          <button type="button" id="btn-create-room" class="btn btn-primary" style="width:100%">Create Shared Room</button>
+          <small>Do this once on the live website. You’ll get a room code to share.</small>
+        </div>
+
+        <div class="form-group" style="text-align:left;margin-top:1.2rem">
+          <label for="room-code">Or join an existing room</label>
+          <input type="text" id="room-code" placeholder="Paste room code here" />
+        </div>
+        <button type="button" id="btn-join-room" class="btn btn-primary" style="width:100%">Join Room</button>
+
+        <div class="qr-actions" style="margin-top:1.2rem">
+          <button type="button" id="btn-sync-now" class="btn btn-ghost">🔄 Sync Now</button>
+          <button type="button" id="btn-leave-room" class="btn btn-ghost">Leave Room</button>
+        </div>
+
+        <div class="qr-tips" style="margin-top:1.5rem">
+          <h3>Steps</h3>
+          <ol>
+            <li>Host the site online and open the <strong>live</strong> URL.</li>
+            <li>One organizer: open <strong>Shared</strong> → <strong>Create Shared Room</strong> → copy the code.</li>
+            <li>Everyone else (and other devices): paste the code → <strong>Join Room</strong>.</li>
+            <li>Add yards and vote as usual — data syncs for the whole room.</li>
+            <li>Put the same room code in a note next to printed QRs if needed.</li>
+          </ol>
+          <p class="note">Shared mode uses a free public JSON store. For a neighborhood Halloween vote this is fine. Don’t put private personal data in yard names.</p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer class="footer">
@@ -168,6 +209,6 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>

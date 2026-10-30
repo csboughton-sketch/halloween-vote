@@ -118,8 +118,30 @@ function escapeHtml(str) {
 }
 
 // ========== QR Code ==========
+const PUBLIC_URL_KEY = 'halloweenVotePublicUrl';
+
+function getSavedPublicUrl() {
+  try {
+    return (localStorage.getItem(PUBLIC_URL_KEY) || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+function savePublicUrl(url) {
+  url = (url || '').trim().replace(/\/$/, '');
+  localStorage.setItem(PUBLIC_URL_KEY, url);
+  return url;
+}
+
 function getBaseUrl() {
-  return window.location.href.split('#')[0].split('?')[0];
+  // Prefer user-set public URL so QRs always point to the hosted site
+  const saved = getSavedPublicUrl();
+  if (saved && /^https?:\/\//i.test(saved)) return saved;
+  // Fallback to current page (works when already on the live site)
+  const current = window.location.href.split('#')[0].split('?')[0];
+  if (current.startsWith('http')) return current;
+  return current;
 }
 
 function getPageUrl() {
@@ -149,6 +171,13 @@ function updateQrDisplays() {
   const modalImg = document.getElementById('qr-modal-image');
   const urlDisplay = document.getElementById('qr-url-display');
   const modalUrl = document.getElementById('qr-modal-url');
+  const input = document.getElementById('public-url');
+
+  if (input && !input.value) {
+    const saved = getSavedPublicUrl();
+    if (saved) input.value = saved;
+    else if (window.location.href.startsWith('http')) input.value = getBaseUrl();
+  }
 
   if (mainImg) {
     mainImg.src = imgUrl;
@@ -157,7 +186,12 @@ function updateQrDisplays() {
   if (modalImg) {
     modalImg.src = modalImgUrl;
   }
-  if (urlDisplay) urlDisplay.textContent = url;
+  if (urlDisplay) {
+    urlDisplay.textContent = url;
+    if (!url.startsWith('http')) {
+      urlDisplay.textContent = '⚠️ Set your live https:// URL above first — current link will not work on phones.';
+    }
+  }
   if (modalUrl) modalUrl.textContent = url;
 }
 
@@ -593,6 +627,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-download').addEventListener('click', downloadQr);
   document.getElementById('modal-close').addEventListener('click', closeQrModal);
   document.getElementById('modal-backdrop').addEventListener('click', closeQrModal);
+
+  const saveUrlBtn = document.getElementById('save-public-url');
+  if (saveUrlBtn) {
+    saveUrlBtn.addEventListener('click', () => {
+      const input = document.getElementById('public-url');
+      let url = (input && input.value || '').trim();
+      if (!url) {
+        toast('Paste your live website URL first');
+        return;
+      }
+      if (!/^https?:\/\//i.test(url)) {
+        url = 'https://' + url;
+        if (input) input.value = url;
+      }
+      savePublicUrl(url);
+      updateQrDisplays();
+      toast('QR codes now point to: ' + url);
+    });
+  }
 
   createParticles();
   refresh();

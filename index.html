@@ -114,7 +114,14 @@
     <section id="qr" class="tab-content">
       <div class="qr-panel">
         <h2>📱 Scan to Vote</h2>
-        <p class="qr-intro">Print this QR code or show it on a screen. Neighbors scan it with their phone camera to open the voting site instantly.</p>
+        <p class="qr-intro">Set your live website URL below, then generate QR codes. Neighbors scan to open the site and vote.</p>
+
+        <div class="form-group" style="text-align:left;margin-bottom:1.25rem">
+          <label for="public-url">Your live website URL *</label>
+          <input type="url" id="public-url" placeholder="https://your-site.netlify.app" />
+          <small>Paste the Netlify / GitHub Pages link here so every QR points to the online site — not a local file.</small>
+        </div>
+        <button type="button" id="save-public-url" class="btn btn-primary" style="width:100%;margin-bottom:1.25rem">Save URL &amp; Refresh QR Codes</button>
 
         <div class="qr-box">
           <img id="qr-image" alt="QR Code to vote" width="280" height="280" />
@@ -123,19 +130,19 @@
         <p class="qr-url" id="qr-url-display"></p>
 
         <div class="qr-actions">
-          <button id="download-qr" class="btn btn-primary">⬇️ Download QR Code</button>
+          <button id="download-qr" class="btn btn-primary">⬇️ Download Site QR</button>
           <button id="copy-link" class="btn btn-ghost">📋 Copy Link</button>
         </div>
 
         <div class="qr-tips">
           <h3>How to use</h3>
           <ol>
-            <li>Host this site (or open the HTML file) on a computer or tablet.</li>
-            <li>Open the <strong>QR Code</strong> tab and download or display the code.</li>
-            <li>Print it and put it on a flyer, porch sign, or candy table.</li>
-            <li>Visitors scan → voting page opens → they pick their favorite yard!</li>
+            <li>Host the site (Netlify Drop is easiest) and copy the <code>https://…</code> link.</li>
+            <li>Paste that link in the box above and click <strong>Save URL &amp; Refresh QR Codes</strong>.</li>
+            <li>Download the site QR, or open each yard’s <strong>📱 QR</strong> button for a per-yard vote code.</li>
+            <li>Print and post the codes. Scanners open the live site and can vote.</li>
           </ol>
-          <p class="note">Tip: For the QR to work for everyone, host the files on a free service (Netlify, GitHub Pages, or any web host) so the link is a public URL instead of a local file path.</p>
+          <p class="note"><strong>Important:</strong> Add yards and generate QRs while on the <em>live</em> website. Votes and yards are stored in each browser. For the whole neighborhood to share the same list, add all yards from one computer on the live site, then have everyone vote on that same live URL.</p>
         </div>
       </div>
     </section>
